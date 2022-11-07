@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg fill="#092fac" viewBox="0 0 455 171" width="455" height="171" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="52%" cy="50%" r="227px" fill="rgb(248,248,255)"/>
+  <polygon points="190 30 190 17 123 17 116 30"/>
+  <polygon points="190 47 190 38 112 38 107 47"/>
+  <polygon points="190 63 190 54 104 54 99 63"/>
+  <polygon points="190 80 190 71 95 71 90 80"/>
+  <polygon points="190 97 190 88 86 88 81 97"/>
+  <polygon points="190 104 190 114 134 114 134 110 130 114 72 114 78 104"/>
+  <polygon points="190 131 190 122 134 122 134 131"/>
+  <polygon points="190 150 190 139 134 139 134 150"/>
+  <polygon points="122 131 127 122 68 122 63 131"/>
+  <polygon points="113 150 118 139 59 139 53 150"/>
+
+  <polygon points="274 150 276 139 218 139 215 149"/>
+  <polygon points="277 131 279 122 221 122 218 131"/>
+  <polygon points="280 114 282 105 224 105 222 114"/>
+  <polygon points="283 97 286 89 227 88 224 97"/>
+  <polygon points="375 150 377 139 318 139 315 150"/>
+  <polygon points="379 131 381 122 321 122 318 131"/>
+  <polygon points="384 97 386 87 326 87 324 97"/>
+  <polygon points="388 81 390 70 331 70 329 80"/>
+  <polygon points="391 62 393 53 334 53 332 62"/>
+  <polygon points="394 46 396 37 338 37 335 46"/>
+  <polygon points="399 30 402 16 342 16 340 30"/>
+  <polygon points="324 63 325 54 206 53 204 62"/>
+  <polygon points="327 46 328 37 209 37 207 46"/>
+  <polygon points="329 30 332 17 212 16 210 29"/>
+  <polygon points="217 71 305 71 287 74 285 79 228 79 229 74"/>
+  
+  <polygon points="382 114 384 105 324 105 323 114"/>
+</svg>

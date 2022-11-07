@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="./style/index.css" />
+    <link rel="stylesheet" href="./style/to.css" />
+    <link rel="icon" href="./img/logo.svg" />
+
+    <title>ATI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+
+  <body>
+    <div class="main">
+      <h1>Simulador de temperatura ATI</h1>
+
+      <div class="graph">
+        <svg id="graph-data"></svg>
+      </div>
+
+      <div class="config">
+        <div class="config-item">
+          <h3>Calor reduzido AC (J):</h3>
+          <input
+            class="textbox"
+            maxlength="4"
+            type="text"
+            id="ac_heat"
+            name="ac_heat"
+          />
+        </div>
+        <div class="config-item">
+          <h3>Calor dissipado Equipamento (J):</h3>
+          <input
+            class="textbox"
+            maxlength="4"
+            type="text"
+            id="eq_heat"
+            name="eq_heat"
+          />
+        </div>
+        <div class="config-item">
+          <h3>Temperatura Ambiente (C):</h3>
+          <input
+            class="textbox"
+            maxlength="4"
+            type="text"
+            id="amb_temp"
+            name="amb_temp"
+          />
+        </div>
+        <div class="config-item">
+          <h3>Temperatura Atual (C):</h3>
+          <input
+            class="textbox"
+            maxlength="4"
+            type="text"
+            id="cur_temp"
+            name="cur_temp"
+          />
+        </div>
+
+        <button class="button">Configurar</button>
+      </div>
+    </div>
+  </body>
+  <script src="js/script.js"></script>
+  <script>
+    async function toConfig(element, enable) {
+      items = null;
+
+      if (element.closest(".maindiv").id.includes("ts")) {
+        items = element.closest(".maindiv").querySelectorAll("ts-item");
+      } else if (element.closest(".maindiv").id.includes("tm")) {
+        items = element.closest(".maindiv").querySelectorAll("tm-item");
+      } else if (element.closest(".maindiv").id.includes("tc")) {
+        items = element.closest(".maindiv").querySelectorAll("tc-item");
+      } else if (element.closest(".maindiv").id.includes("mdb")) {
+        items = element.closest(".maindiv").querySelectorAll("mdb-item");
+      }
+
+      if (items != null) {
+        items.forEach((e) => {
+          e.isConfigEnabled = enable;
+          e.setAttribute("config", enable ? "enabled" : "false");
+        });
+
+        config = element.closest(".maindiv").querySelector("#config");
+        config.style.display = enable ? "none" : "block";
+
+        close = element.closest(".maindiv").querySelector("#close");
+        close.style.display = enable ? "block" : "none";
+      }
+
+      if (element.id == "save") {
+        const response = await fetch("save_to", {
+          method: "PUT",
+          headers: { "Content-type": "application/json" },
+          body: JSON.stringify({ save: true }),
+        });
+      }
+    }
+
+    async function fetch_ac_state() {
+      const response = await fetch("ac_state", {
+        method: "GET",
+        headers: { "Content-type": "application/json" },
+      });
+
+      var body = await response.text();
+
+      document.querySelectorAll(".ac-wrapper").forEach((e) => {
+        e.setAttribute("state", "0");
+      });
+
+      //switch on body states
+      switch (body) {
+        case "0":
+          document.querySelector("#alarmed").setAttribute("state", "1");
+          break;
+        case "1":
+          document.querySelector("#wait-ac").setAttribute("state", "1");
+          break;
+        case "2":
+          document.querySelector("#wait-timer-ac").setAttribute("state", "1");
+          break;
+        case "3":
+          document.querySelector("#wait-temp").setAttribute("state", "1");
+          break;
+        case "4":
+          document.querySelector("#ar-1").setAttribute("state", "1");
+          break;
+        case "5":
+          document.querySelector("#ar-2").setAttribute("state", "1");
+          break;
+        case "6":
+          document.querySelector("#ar-1").setAttribute("state", "1");
+          document.querySelector("#ar-2").setAttribute("state", "1");
+
+          break;
+      }
+    }
+
+    setInterval(async () => {
+      fetch_ac_state();
+    }, 5000);
+  </script>
+</html>

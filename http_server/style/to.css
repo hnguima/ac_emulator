@@ -1,0 +1,414 @@
+.to-wrapper {
+    width: var(--wrapper-width); 
+    height: var(--wrapper-height);
+    border-radius: 10px;
+    margin: 4px;
+    background-color: var(--branco-ati);
+    box-shadow: 6px 6px 4px -5px rgba(0, 0, 0, 0.1),
+                0 0 2px rgba(0, 0, 0, 0.05),
+                inset 3px 3px 2px rgba(255, 255, 255);
+
+    position: relative;
+    overflow: hidden;
+    transition: 0.2s;
+}
+
+.to-wrapper[state="0"]{
+    background-color: var(--branco-ati);
+    animation: none;
+}
+
+.to-wrapper[config=true] {
+    width: 100%;
+    background-color: #dfdfff;
+    height: calc((var(--num-rows)) * 40px + 40px);
+}
+.mdb-wrapper[config=true] {
+    width: 100%;
+    background-color: #dfdfff;
+    height: calc((var(--num-rows)) * 40px + 90px);
+}
+
+.to-wrapper[config=enabled] {
+    background-color: #ededff;
+}
+
+.to-wrapper[config="enabled"]:hover {
+    cursor: pointer;
+    background-color: #e0e0ff;
+    transform: scale(1.05);
+}
+
+.to-wrapper h5 {
+    font-size: 0.7em;
+    margin: 0;
+}
+
+
+.to-data {
+    width: var(--wrapper-width);
+    height: var(--wrapper-height); 
+    left:0px;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+
+    position: absolute;
+}
+.tc-data {
+    justify-content: center;
+}
+.mdb-data {
+    flex-direction: row;
+    justify-content: space-evenly;
+}
+
+
+.to-data #label{
+    width: 70%;
+    word-wrap: break-word;
+}
+.mdb-data #label{
+    width: auto;
+}
+
+.to-data .led {
+    width: 8px;
+    height: 8px;
+    margin: 8px;
+    top: 0;
+    right: 0;
+    position: absolute;
+}
+
+.to-wrapper[state="0"] * .led{
+    background-color: rgba(0, 0, 0, 0.1)
+}
+
+.to-config {
+    
+    height: 100%; 
+    width: calc(100% - var(--wrapper-width));
+    left: var(--wrapper-width);
+    
+    background-color: #dfdfe8;
+    box-shadow: inset 8px 0 5px -5px rgba(0, 0, 0, 0.1);
+    
+    display: grid;
+    grid-template-columns: 10px auto 10px 40px;
+    grid-template-rows: 0.5fr repeat(var(--num-rows), 1fr) 0.5fr;
+
+    position: absolute;
+}
+.mdb-config{
+    box-shadow: inset 0px 10px 5px -5px rgba(0, 0, 0, 0.1);
+}
+
+.to-config > div {
+    height: 40px;
+    width: 100%; 
+    
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+
+    border: 0 solid rgba(0, 0, 0, 0.1);
+    border-width: 0 0 1px 0;  
+}
+
+.to-config > .btn{
+    height: 100%;
+    background-color: limegreen; 
+    justify-content: center;
+}
+
+.to-config * .textbox{
+    font-family: Helvetica;
+
+    margin: 0;
+    margin-left: 10px;
+    height: 20px;
+    width: 120px;
+    font-size: 12px;
+    padding: 3px;
+    
+    text-align: center;
+    overflow: hidden;
+    resize: none;
+}
+
+.to-config * .float{
+    width: 70px;
+}
+
+.to-config * select{
+
+    margin: 0;
+    margin-left: 10px;
+    height: 20px;
+    font-size: 12px;
+    padding: 3px;
+    
+    text-align: center;
+    overflow: hidden;
+    resize: none;
+
+    width: fit-content;
+}
+
+.load {
+    display: none;
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    top: 15px;
+    left: 65px;
+}
+.load:after {
+    content: " ";
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 3px solid white;
+    border-color: #ccc #ccc #ccc transparent;
+    animation: load .7s linear infinite;
+}
+@keyframes load {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+}
+
+.to-wrapper[loading="1"] > .to-data > .load{
+    display: block;
+}
+
+.loadChk {
+    position: absolute;
+    top: 15px;
+    left: 65px;
+    margin-bottom: 3px;
+    animation: none;
+    opacity: 0;
+}
+@keyframes loadChk {
+    0%   {opacity: 0;}
+    50%  {opacity: 1;}
+    100% {opacity: 0;}
+}
+
+mdb-item[config=true],
+tm-item[config=true],
+tc-item[config=true],
+ts-item[config=true] {
+    width: 100%;
+    height: fit-content;
+}
+
+#mdb-visible > mdb-item[poll="0"],
+#mdb-hidden > mdb-item[poll="1"],
+#tm-visible > tm-item[poll="0"],
+#tm-hidden > tm-item[poll="1"],
+#tc-visible > tc-item[poll="0"],
+#tc-hidden > tc-item[poll="1"],
+#ts-visible > ts-item[poll="0"],
+#ts-hidden > ts-item[poll="1"]{
+    display: none;
+}
+
+.btn-to {
+    fill: #092fac;
+    padding: 7px 8px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+#mdb-visible:empty, 
+#mdb-hidden:empty, 
+#ts-visible:empty,
+#ts-hidden:empty,
+#tc-visible:empty,
+#tc-hidden:empty,
+#tm-visible:empty,
+#tm-hidden:empty {
+    margin: auto;
+    width: 90%;
+    height: 170px; 
+    cursor: progress; 
+
+    background: 
+        linear-gradient(0.25turn, transparent, var(--branco-ati), transparent),
+        linear-gradient(#ededff, #ededff),
+        linear-gradient(0.25turn, transparent, var(--branco-ati), transparent),
+        linear-gradient(#ededff, #ededff),
+        linear-gradient(0.25turn, transparent, var(--branco-ati), transparent),
+        linear-gradient(#ededff, #ededff);
+
+    background-repeat: no-repeat;   
+    background-size:    
+        120% 60px, 90% 50px, 
+        120% 60px, 90% 50px, 
+        120% 60px, 90% 50px;
+    background-position:
+        500px 0, 50% 5px, 
+        1000px 60px, 50% 65px, 
+        1500px 120px, 50% 125px; 
+
+    animation: loading 2s alternate infinite;
+}
+
+@keyframes loading {  
+  to {
+    background-position: 
+        -600px 0, 50% 5px, 
+        -600px 60px, 50% 65px, 
+        -600px 120px, 50% 125px; 
+  }
+}
+
+
+
+/* Ts specific classes */
+.ts-wrapper {
+    --wrapper-width: 80px; 
+    --wrapper-height: 80px; 
+    --num-rows: 5;
+    background-color: rgb(72, 255, 0, 0.2);
+    animation: to-on 0.5s infinite ease-in-out alternate-reverse;
+}
+
+.ts-config {
+    grid-template-areas: 
+        ". . . save"
+        ". name . save"
+        ". debounce . save"
+        ". level . save"
+        ". alarm . save"
+        ". poll . save"
+        ". . . save";
+}
+@keyframes to-on{
+    0% {
+        box-shadow: inset 0px 0px 5px 7px rgba(72, 255, 0, 0.3),
+                    3px 3px 3px rgba(0, 0, 0, 0.15),
+                    0px 0px 10px rgba(200, 255, 200, 0.9);
+    }
+    100% {
+        box-shadow: inset 0px 0px 10px rgba(72, 255, 0, 0.3),
+                    3px 3px 3px rgba(0, 0, 0, 0.15),
+                    -3px -3px 3px rgba(255, 255, 255, 0.9);
+    }
+}
+
+@keyframes to-alarmed{
+    0% {
+        box-shadow: inset 0px 0px 5px 7px rgba(255, 0, 0, 0.3),
+                    3px 3px 3px rgba(0, 0, 0, 0.15),
+                    0px 0px 10px rgba(255, 200, 200, 0.9);
+    }
+    100% {
+        box-shadow: inset 0px 0px 10px rgba(255, 0, 0, 0.3),
+                    3px 3px 3px rgba(0, 0, 0, 0.15),
+                    -3px -3px 3px rgba(255, 255, 255, 0.9);
+    }
+}
+
+/* Tc specific classes */
+.tc-wrapper {
+    --wrapper-width: 90px; 
+    --wrapper-height: 100px; 
+    --num-rows: 5;
+    background-color: rgb(72, 255, 0, 0.2);
+    animation: to-on 0.5s infinite ease-in-out alternate-reverse;
+}
+
+.tc-config {
+    grid-template-areas: 
+        ". . . save"
+        ". name . save"
+        ". mode . save"
+        ". period . save"
+        ". level . save"
+        ". poll . save"
+        ". . . save";
+}
+
+/* Tm specific classes */
+.tm-wrapper {
+    --wrapper-width: 90px; 
+    --wrapper-height: 140px;
+    --num-rows: 9;
+}
+
+.tm-config {
+    grid-template-areas: 
+        ". . . save"
+        ". name . save"
+        ". min . save"
+        ". max . save"
+        ". range-inf . save"
+        ". range-sup . save"
+        ". offset . save"
+        ". dead-band . save"
+        ". alarm . save"
+        ". poll . save"
+        ". . . save";
+}
+
+/* Tm specific classes */
+mdb-item{
+    width: 100%;
+}
+.mdb-wrapper {
+    --wrapper-width: 100%; 
+    --wrapper-height: 50px;
+    --num-rows: 4;
+}
+
+.mdb-config {
+    height: calc(100% - var(--wrapper-height)); 
+    width: 100%;
+    top: var(--wrapper-height);
+    left: 0;
+
+    grid-template-areas: 
+        ". . . save"
+        ". name . save"
+        ". factor . save"
+        ". type . save"
+        ". poll . save"
+        ". . . save";
+}
+
+
+/* ac specific classes */
+ac-item{
+    width: 100%;
+}
+.ac-wrapper {
+    --wrapper-width: 160px; 
+    --wrapper-height: 80px;
+    --num-rows: 4;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+
+
+    background-color: rgb(72, 255, 0, 0.2);
+    animation: to-on 0.5s infinite ease-in-out alternate-reverse;
+
+    font-size: 1.2em;
+
+    margin-bottom: 15px;
+}
+
+.ac-alarmed {
+    background-color: rgba(255, 0, 55, 0.2);
+    animation: to-alarmed 0.5s infinite ease-in-out alternate-reverse;
+}

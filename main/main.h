@@ -39,6 +39,20 @@
 
 typedef struct
 {
+  int16_t head;
+  int16_t tail;
+
+  size_t item_size;
+  int16_t max_count;
+  int16_t count;
+
+  bool full;
+
+  void **data;
+} ring_buffer_t;
+
+typedef struct
+{
 
   float curr_temp;
   float ac_heat;
@@ -48,7 +62,7 @@ typedef struct
   bool ac1_on;
   bool ac2_on;
 
-  RingbufHandle_t buffer;
+  ring_buffer_t *buffer;
 
 } temp_simulator_t;
 

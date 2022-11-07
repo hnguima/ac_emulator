@@ -49,6 +49,73 @@ static const char *TAG = "main";
 #define ROOM_THERMAL_CAP (TOTAL_AIR_MASS * AIR_THERMAL_CAPACITANCE)
 #define ROOM_THERMAL_RES 0.01
 
+float buffer[1024];
+
+ring_buffer_t *ring_buffer_init(size_t item_size, uint16_t item_count)
+{
+	ring_buffer_t *rb = malloc(sizeof(ring_buffer_t));
+	rb->max_count = item_count;
+	rb->item_size = item_size;
+	rb->head = 0;
+	rb->tail = 0;
+	rb->count = 0;
+	rb->full = false;
+
+	rb->data = calloc(item_count, item_size);
+
+	return rb;
+}
+
+bool ring_buffer_insert(ring_buffer_t *rb, void *item)
+{
+	memcpy(rb->data + rb->head * rb->item_size, item, rb->item_size);
+	rb->head = (rb->head + 1) % rb->max_count;
+
+	rb->count++;
+	if (rb->count >= rb->max_count)
+	{
+		rb->count = rb->max_count;
+		rb->tail = rb->head;
+		rb->full = true;
+	}
+
+	return true;
+}
+
+void *ring_buffer_remove(ring_buffer_t *rb)
+{
+	if (rb->count == 0)
+	{
+		return NULL;
+	}
+
+	void *out = malloc(rb->item_size);
+	memcpy(out, rb->data + rb->tail * rb->item_size, rb->item_size);
+	rb->tail = (rb->tail + 1) % rb->max_count;
+
+	rb->full = false;
+
+	rb->count--;
+	if (rb->count <= 0)
+	{
+		rb->count = 0;
+	}
+
+	return out;
+}
+
+bool ring_buffer_peek(ring_buffer_t *rb)
+{
+	void **out = calloc(rb->count, rb->item_size);
+
+	for (uint16_t i = 0; i < rb->count; i++)
+	{
+		memcpy(out[i], rb->data + ((rb->tail + i) % rb->max_count) * rb->item_size, rb->item_size);
+	}
+
+	return out;
+}
+
 temp_simulator_t temp_sim = {
 		.amb_temp = AMBIENT_TEMPERATURE,
 		.curr_temp = 20 + ZERO_KELVIN,
@@ -120,14 +187,9 @@ void temp_simulation_task(void *params)
 		temp_sim.curr_temp = (heat + ((C * last_temp) / d_time) + (temp_sim.amb_temp / R)) / ((1 / R) + (C / d_time));
 		last_temp = temp_sim.curr_temp;
 
-		UBaseType_t res = xRingbufferSend(temp_sim.buffer, tx_item, sizeof(tx_item), pdMS_TO_TICKS(1000));
-		if (res != pdTRUE)
-		{
-			printf("Failed to send item\n");
-		}
+		ring_buffer_insert(temp_sim.buffer, &temp_sim.curr_temp);
 
 		ESP_LOGI(TAG, "\rsimulated temperature: %.2f", temp_sim.curr_temp - ZERO_KELVIN);
-
 
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
@@ -161,18 +223,14 @@ void app_main(void)
 	gpio_isr_handler_add(GPIO_INPUT_AC_1, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_1);
 	gpio_isr_handler_add(GPIO_INPUT_AC_2, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_2);
 
-	temp_sim.buffer = xRingbufferCreate(1028, RINGBUF_TYPE_NOSPLIT);
-	if (temp_sim.buffer == NULL)
-	{
-		ESP_LOGE(TAG, "Failed to create ring buffer\n");
-	}
+	temp_sim.buffer = ring_buffer_init(sizeof(float), 1024);
 
 	xTaskCreate(temp_simulation_task, "temp_simulation_task", 2048, NULL, 1, NULL);
 
-
-
 	while (1)
 	{
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+		ring_buffer_peek(temp_sim.buffer);
 	}
 }

@@ -17,104 +17,33 @@ static const char *TAG = "main";
 /**
  * @brief GPIO INPUT pins
  */
-#define GPIO_INPUT_AC_1 13
-#define GPIO_INPUT_AC_2 14
+#define GPIO_INPUT_AC_1 32
+#define GPIO_INPUT_AC_2 33
+#define GPIO_INPUT_AC_3 25
+#define GPIO_INPUT_AC_4 27
 
 #define GPIO_INPUT_PIN_SEL ((1ULL << GPIO_INPUT_AC_1) | \
-														(1ULL << GPIO_INPUT_AC_2))
+														(1ULL << GPIO_INPUT_AC_2) | \
+														(1ULL << GPIO_INPUT_AC_3) | \
+														(1ULL << GPIO_INPUT_AC_4))
 
 /**
  * @brief GPIO OUTPUT pins
  */
-#define GPIO_OUTPUT_AC_1_ACTIVE 27
-#define GPIO_OUTPUT_AC_2_ACTIVE 26
-#define GPIO_OUTPUT_TEMP_MAX 25
-#define GPIO_OUTPUT_TEMP_MIN 33
+#define GPIO_OUTPUT_AC_1_ACTIVE 15
+#define GPIO_OUTPUT_AC_2_ACTIVE 4
+#define GPIO_OUTPUT_AC_3_ACTIVE 5
+#define GPIO_OUTPUT_AC_4_ACTIVE 18
+
+#define GPIO_OUTPUT_TEMP_MAX 19
+#define GPIO_OUTPUT_TEMP_MIN 21
 
 #define GPIO_OUTPUT_PIN_SEL ((1ULL << GPIO_OUTPUT_AC_1_ACTIVE) | \
 														 (1ULL << GPIO_OUTPUT_AC_2_ACTIVE) | \
+														 (1ULL << GPIO_OUTPUT_AC_3_ACTIVE) | \
+														 (1ULL << GPIO_OUTPUT_AC_4_ACTIVE) | \
 														 (1ULL << GPIO_OUTPUT_TEMP_MAX) |    \
 														 (1ULL << GPIO_OUTPUT_TEMP_MIN))
-
-#define AIR_THERMAL_CAPACITANCE 700.0 // J/kg*K
-#define AIR_DENSITY 1.225							// Kg/m3
-#define ROOM_VOLUME 30								// m3
-#define AMBIENT_TEMPERATURE 298.15		// K
-#define ZERO_KELVIN 273.15						// K
-
-#define EQUIPMENT_HEAT 700 // J
-#define AC_HEAT 700				 // J
-
-#define TOTAL_AIR_MASS (AIR_DENSITY * ROOM_VOLUME)
-#define ROOM_THERMAL_CAP (TOTAL_AIR_MASS * AIR_THERMAL_CAPACITANCE)
-#define ROOM_THERMAL_RES 0.01
-
-float buffer[1024];
-
-ring_buffer_t *ring_buffer_init(size_t item_size, uint16_t item_count)
-{
-	ring_buffer_t *rb = malloc(sizeof(ring_buffer_t));
-	rb->max_count = item_count;
-	rb->item_size = item_size;
-	rb->head = 0;
-	rb->tail = 0;
-	rb->count = 0;
-	rb->full = false;
-
-	rb->data = calloc(item_count, item_size);
-
-	return rb;
-}
-
-bool ring_buffer_insert(ring_buffer_t *rb, void *item)
-{
-	memcpy(rb->data + rb->head * rb->item_size, item, rb->item_size);
-	rb->head = (rb->head + 1) % rb->max_count;
-
-	rb->count++;
-	if (rb->count >= rb->max_count)
-	{
-		rb->count = rb->max_count;
-		rb->tail = rb->head;
-		rb->full = true;
-	}
-
-	return true;
-}
-
-void *ring_buffer_remove(ring_buffer_t *rb)
-{
-	if (rb->count == 0)
-	{
-		return NULL;
-	}
-
-	void *out = malloc(rb->item_size);
-	memcpy(out, rb->data + rb->tail * rb->item_size, rb->item_size);
-	rb->tail = (rb->tail + 1) % rb->max_count;
-
-	rb->full = false;
-
-	rb->count--;
-	if (rb->count <= 0)
-	{
-		rb->count = 0;
-	}
-
-	return out;
-}
-
-bool ring_buffer_peek(ring_buffer_t *rb)
-{
-	void **out = calloc(rb->count, rb->item_size);
-
-	for (uint16_t i = 0; i < rb->count; i++)
-	{
-		memcpy(out[i], rb->data + ((rb->tail + i) % rb->max_count) * rb->item_size, rb->item_size);
-	}
-
-	return out;
-}
 
 temp_simulator_t temp_sim = {
 		.amb_temp = AMBIENT_TEMPERATURE,
@@ -125,7 +54,7 @@ temp_simulator_t temp_sim = {
 		.ac2_on = false,
 };
 
-xQueueHandle intr_queue;
+QueueHandle_t intr_queue;
 
 static void gpio_interrupt_handler(void *args)
 {
@@ -145,13 +74,23 @@ void gpio_controll_task(void *params)
 
 			if (pin == GPIO_INPUT_AC_1)
 			{
-				gpio_set_level(GPIO_OUTPUT_AC_1_ACTIVE, level);
+				gpio_set_level(GPIO_OUTPUT_AC_1_ACTIVE, !level);
 				temp_sim.ac1_on = level;
 			}
 			else if (pin == GPIO_INPUT_AC_2)
 			{
-				gpio_set_level(GPIO_OUTPUT_AC_2_ACTIVE, level);
+				gpio_set_level(GPIO_OUTPUT_AC_2_ACTIVE, !level);
 				temp_sim.ac2_on = level;
+			}
+			else if (pin == GPIO_INPUT_AC_3)
+			{
+				gpio_set_level(GPIO_OUTPUT_AC_3_ACTIVE, !level);
+				temp_sim.ac3_on = level;
+			}
+			else if (pin == GPIO_INPUT_AC_4)
+			{
+				gpio_set_level(GPIO_OUTPUT_AC_4_ACTIVE, !level);
+				temp_sim.ac4_on = level;
 			}
 		}
 
@@ -171,25 +110,30 @@ void temp_simulation_task(void *params)
 
 	while (true)
 	{
+		int ac_active = gpio_get_level(GPIO_INPUT_AC_1) + gpio_get_level(GPIO_INPUT_AC_2) + gpio_get_level(GPIO_INPUT_AC_3) + gpio_get_level(GPIO_INPUT_AC_4);
 
-		heat = temp_sim.eq_heat;
-
-		if (gpio_get_level(GPIO_INPUT_AC_1))
-		{
-			heat = heat - temp_sim.ac_heat;
-		}
-
-		if (gpio_get_level(GPIO_INPUT_AC_2))
-		{
-			heat = heat - temp_sim.ac_heat;
-		}
+		heat = temp_sim.eq_heat - (ac_active * temp_sim.ac_heat);
 
 		temp_sim.curr_temp = (heat + ((C * last_temp) / d_time) + (temp_sim.amb_temp / R)) / ((1 / R) + (C / d_time));
 		last_temp = temp_sim.curr_temp;
 
+		if (temp_sim.curr_temp >= 27 + ZERO_KELVIN)
+		{
+			gpio_set_level(GPIO_OUTPUT_TEMP_MAX, 0);
+		}
+		else if (temp_sim.curr_temp <= 24 + ZERO_KELVIN)
+		{
+			gpio_set_level(GPIO_OUTPUT_TEMP_MIN, 0);
+		}
+		else
+		{
+			gpio_set_level(GPIO_OUTPUT_TEMP_MAX, 1);
+			gpio_set_level(GPIO_OUTPUT_TEMP_MIN, 1);
+		}
+
 		ring_buffer_insert(temp_sim.buffer, &temp_sim.curr_temp);
 
-		ESP_LOGI(TAG, "\rsimulated temperature: %.2f", temp_sim.curr_temp - ZERO_KELVIN);
+		printf("temperature: %.2f\n", temp_sim.curr_temp - ZERO_KELVIN);
 
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
@@ -204,7 +148,8 @@ void app_main(void)
 	io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
 	io_conf.mode = GPIO_MODE_OUTPUT;
 	io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
-	io_conf.pull_up_en = 1;
+	io_conf.pull_up_en = 0;
+	io_conf.pull_down_en = 1;
 	gpio_config(&io_conf);
 
 	io_conf.intr_type = GPIO_PIN_INTR_ANYEDGE;
@@ -213,8 +158,12 @@ void app_main(void)
 	io_conf.pull_down_en = 1;
 	gpio_config(&io_conf);
 
-	gpio_set_level(GPIO_OUTPUT_AC_1_ACTIVE, gpio_get_level(GPIO_INPUT_AC_1));
-	gpio_set_level(GPIO_OUTPUT_AC_2_ACTIVE, gpio_get_level(GPIO_INPUT_AC_2));
+	gpio_set_level(GPIO_OUTPUT_AC_1_ACTIVE, !gpio_get_level(GPIO_INPUT_AC_1));
+	gpio_set_level(GPIO_OUTPUT_AC_2_ACTIVE, !gpio_get_level(GPIO_INPUT_AC_2));
+	gpio_set_level(GPIO_OUTPUT_AC_3_ACTIVE, !gpio_get_level(GPIO_INPUT_AC_3));
+	gpio_set_level(GPIO_OUTPUT_AC_4_ACTIVE, !gpio_get_level(GPIO_INPUT_AC_4));
+	gpio_set_level(GPIO_OUTPUT_TEMP_MAX, 1);
+	gpio_set_level(GPIO_OUTPUT_TEMP_MIN, 1);
 
 	intr_queue = xQueueCreate(10, sizeof(int));
 	xTaskCreate(gpio_controll_task, "gpio_control_task", 2048, NULL, 1, NULL);
@@ -222,15 +171,23 @@ void app_main(void)
 	gpio_install_isr_service(0);
 	gpio_isr_handler_add(GPIO_INPUT_AC_1, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_1);
 	gpio_isr_handler_add(GPIO_INPUT_AC_2, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_2);
+	gpio_isr_handler_add(GPIO_INPUT_AC_3, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_3);
+	gpio_isr_handler_add(GPIO_INPUT_AC_4, gpio_interrupt_handler, (void *)GPIO_INPUT_AC_4);
 
-	temp_sim.buffer = ring_buffer_init(sizeof(float), 1024);
+	temp_sim.buffer = ring_buffer_init(sizeof(float), 256);
 
 	xTaskCreate(temp_simulation_task, "temp_simulation_task", 2048, NULL, 1, NULL);
 
+	fs_mount();
+
+	wifi_data_t wifi_config = {.enabled = 1, .password = "ati12345", .ssid = "TEMP_SIM_ATI"};
+	wifi_driver_init(&wifi_config);
+
+	http_server_init();
+
 	while (1)
 	{
+		// printf("\33[1Bmem : %d", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
 		vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-		ring_buffer_peek(temp_sim.buffer);
 	}
 }

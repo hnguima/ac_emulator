@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="./style/index.css" />
-    <link rel="stylesheet" href="./style/to.css" />
     <link rel="icon" href="./img/logo.svg" />
 
     <title>ATI</title>
@@ -15,7 +14,7 @@
       <h1>Simulador de temperatura ATI</h1>
 
       <div class="graph">
-        <svg id="graph-data"></svg>
+        <svg id="graph-data" height="100%" width="100%"></svg>
       </div>
 
       <div class="config">
@@ -30,7 +29,7 @@
           />
         </div>
         <div class="config-item">
-          <h3>Calor dissipado Equipamento (J):</h3>
+          <h3>Calor gerado nos equipamentos (J):</h3>
           <input
             class="textbox"
             maxlength="4"
@@ -55,8 +54,8 @@
             class="textbox"
             maxlength="4"
             type="text"
-            id="cur_temp"
-            name="cur_temp"
+            id="curr_temp"
+            name="curr_temp"
           />
         </div>
 
@@ -64,85 +63,81 @@
       </div>
     </div>
   </body>
-  <script src="js/script.js"></script>
   <script>
-    async function toConfig(element, enable) {
-      items = null;
-
-      if (element.closest(".maindiv").id.includes("ts")) {
-        items = element.closest(".maindiv").querySelectorAll("ts-item");
-      } else if (element.closest(".maindiv").id.includes("tm")) {
-        items = element.closest(".maindiv").querySelectorAll("tm-item");
-      } else if (element.closest(".maindiv").id.includes("tc")) {
-        items = element.closest(".maindiv").querySelectorAll("tc-item");
-      } else if (element.closest(".maindiv").id.includes("mdb")) {
-        items = element.closest(".maindiv").querySelectorAll("mdb-item");
-      }
-
-      if (items != null) {
-        items.forEach((e) => {
-          e.isConfigEnabled = enable;
-          e.setAttribute("config", enable ? "enabled" : "false");
-        });
-
-        config = element.closest(".maindiv").querySelector("#config");
-        config.style.display = enable ? "none" : "block";
-
-        close = element.closest(".maindiv").querySelector("#close");
-        close.style.display = enable ? "block" : "none";
-      }
-
-      if (element.id == "save") {
-        const response = await fetch("save_to", {
-          method: "PUT",
-          headers: { "Content-type": "application/json" },
-          body: JSON.stringify({ save: true }),
-        });
-      }
-    }
-
-    async function fetch_ac_state() {
-      const response = await fetch("ac_state", {
+    async function update_graph(element, enable) {
+      const response = await fetch("graph", {
         method: "GET",
-        headers: { "Content-type": "application/json" },
       });
 
-      var body = await response.text();
+      var body = await response.arrayBuffer();
 
-      document.querySelectorAll(".ac-wrapper").forEach((e) => {
-        e.setAttribute("state", "0");
+      const array = new Float32Array(body);
+
+      let graph = document.getElementById("graph-data");
+
+      let arr_min = Math.min(...array);
+      let arr_max = Math.max(...array);
+      let arr_range = Math.max(...array) - Math.min(...array);
+      arr_unit = array.map((element) => {
+        return (element - arr_min) / arr_range;
       });
 
-      //switch on body states
-      switch (body) {
-        case "0":
-          document.querySelector("#alarmed").setAttribute("state", "1");
-          break;
-        case "1":
-          document.querySelector("#wait-ac").setAttribute("state", "1");
-          break;
-        case "2":
-          document.querySelector("#wait-timer-ac").setAttribute("state", "1");
-          break;
-        case "3":
-          document.querySelector("#wait-temp").setAttribute("state", "1");
-          break;
-        case "4":
-          document.querySelector("#ar-1").setAttribute("state", "1");
-          break;
-        case "5":
-          document.querySelector("#ar-2").setAttribute("state", "1");
-          break;
-        case "6":
-          document.querySelector("#ar-1").setAttribute("state", "1");
-          document.querySelector("#ar-2").setAttribute("state", "1");
+      let rect = graph.getBoundingClientRect();
 
-          break;
-      }
+      let graph_str = `M 0 ${arr_unit[0] * (rect.height - 40) + 20} `;
+
+      let x_step = rect.width / array.length;
+      let x_offset = x_step;
+
+      arr_unit.forEach((element) => {
+        graph_str += `L ${x_offset} ${element * (rect.height - 40) + 20} `;
+        x_offset += x_step;
+      });
+
+      graph.innerHTML = `
+      <path d="${graph_str}" stroke="#092fac" stroke-width="3" fill="none" />
+      <g stroke="#ccc" stroke-width="1.5" fill="none">
+        <path d="M 50 20 L ${
+          rect.width
+        } 20" />
+        <path d="M 50 ${rect.height - 20} L ${rect.width} ${
+          rect.height - 20
+        }"/>
+      </g>
+
+      <g transform=" translate(10 15) scale(1 -1)">
+        <text x=0 y=0 >${Math.round((arr_min - 273.15) * 100) / 100}</text>
+      </g>
+      <g transform=" translate(10 ${rect.height - 25}) scale(1 -1)">
+        <text x=0 y=0 >${Math.round((arr_max - 273.15) * 100) / 100 }</text>
+      </g>`;
+
+      // console.log(body);
     }
 
+    async function get_configs() {
+      const response = await fetch("config", {
+        method: "GET",
+      });
+
+      var body = await response.json();
+      console.log(body);
+
+      document.getElementById("ac_heat").value = body["ac_heat"];
+      document.getElementById("eq_heat").value = body["eq_heat"];
+      document.getElementById("amb_temp").value =
+        Math.round((body["amb_temp"] - 273.15) * 100) / 100;
+      document.getElementById("curr_temp").value =
+        Math.round((body["curr_temp"] - 273.15) * 100) / 100;
+
+      console.log(body["ac_heat"]);
+      console.log(document.getElementById("ac_heat").innerHTML);
+    }
+
+    get_configs();
+    update_graph();
     setInterval(async () => {
-      fetch_ac_state();
-    }, 5000);
+      update_graph();
+    }, 1000);
   </script>
 </html>

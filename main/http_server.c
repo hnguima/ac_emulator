@@ -2,12 +2,9 @@
 #include "http_server.h"
 
 static esp_err_t content_handler(httpd_req_t *req);
-static esp_err_t config_handler(httpd_req_t *req);
-static esp_err_t load_handler(httpd_req_t *req);
-static esp_err_t reset_handler(httpd_req_t *req);
-static esp_err_t OTA_status_handler(httpd_req_t *req);
-static esp_err_t OTA_upload_handler(httpd_req_t *req);
-static esp_err_t ac_state_handler(httpd_req_t *req);
+static esp_err_t config_get_handler(httpd_req_t *req);
+static esp_err_t config_put_handler(httpd_req_t *req);
+static esp_err_t graph_get_handler(httpd_req_t *req);
 
 #define HTTP_URI(__uri, __method, __handler, __user_ctx) \
     {                                                    \
@@ -22,8 +19,9 @@ httpd_uri_t l_http_data[] = {
     HTTP_URI("/img/*", HTTP_GET, content_handler, NULL),
     HTTP_URI("/js/*", HTTP_GET, content_handler, NULL),
     HTTP_URI("/style/*", HTTP_GET, content_handler, NULL),
-    HTTP_URI("/save_config", HTTP_PUT, config_handler, NULL),
-    HTTP_URI("/load_config", HTTP_GET, load_handler, NULL),
+    HTTP_URI("/config", HTTP_GET, config_get_handler, NULL),
+    HTTP_URI("/config", HTTP_PUT, config_put_handler, NULL),
+    HTTP_URI("/graph", HTTP_GET, graph_get_handler, NULL),
 };
 
 #define HTTP_DATA_MAX_INDEX (sizeof(l_http_data) / sizeof(l_http_data[0]))
@@ -31,6 +29,7 @@ httpd_uri_t l_http_data[] = {
 httpd_handle_t http_instance = NULL;
 
 static const char *TAG = "http_server";
+// extern temp_simulator_t temp_sim;
 
 static esp_err_t content_handler(httpd_req_t *req)
 {
@@ -95,112 +94,69 @@ static esp_err_t content_handler(httpd_req_t *req)
     return err;
 }
 
+extern temp_simulator_t temp_sim;
 
-
-static esp_err_t config_handler(httpd_req_t *req)
+static esp_err_t config_get_handler(httpd_req_t *req)
 {
 
-    char *req_content = calloc(req->content_len + 1, sizeof(char));
+    cJSON *config = cJSON_CreateObject();
 
-    uint16_t bytes_read = 0;
+    cJSON_AddNumberToObject(config, "ac_heat", temp_sim.ac_heat);
+    cJSON_AddNumberToObject(config, "eq_heat", temp_sim.eq_heat);
+    cJSON_AddNumberToObject(config, "amb_temp", temp_sim.amb_temp);
+    cJSON_AddNumberToObject(config, "curr_temp", temp_sim.curr_temp);
 
-    while (bytes_read < req->content_len)
-    {
-        uint16_t ret = httpd_req_recv(req, req_content + bytes_read, req->content_len);
-        if (ret <= 0)
-        {
-            ESP_LOGE(TAG, "Error receiving data");
-            free(req_content);
-            return ESP_FAIL;
-        }
-        bytes_read += ret;
-    }
+    char *body = cJSON_Print(config);
+    cJSON_Delete(config);
 
-    cJSON *body = cJSON_Parse(req_content);
-    free(req_content);
+    httpd_resp_send(req, body, HTTPD_RESP_USE_STRLEN);
+    free(body);
 
-    if (!body)
-    {
-        ESP_LOGE(TAG, "Failed to parse JSON");
-        httpd_resp_set_status(req, HTTPD_400);
-        httpd_resp_send(req, NULL, 0);
-        return ESP_FAIL;
-    }
-
-    // saving old config
-    cJSON *old_config_json = config_parse(utr32, CONFIG_ALL);
-    char *old_config_str = cJSON_Print(old_config_json);
-    cJSON_Delete(old_config_json);
-
-    fs_write_file("/data/old_config", old_config_str);
-    free(old_config_str);
-
-    config_load_json(utr32, body);
-    cJSON_Delete(body);
-
-    const char resp[] = "Success";
-    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_send(req, NULL, 0);
 
     return ESP_OK;
 }
 
-static esp_err_t load_handler(httpd_req_t *req)
+static esp_err_t config_put_handler(httpd_req_t *req)
 {
-    char *body_str = NULL;
-
-    char config_type[10];
-    httpd_req_get_hdr_value_str(req, "Config-type", config_type, 10);
-
-    if (strcmp(config_type, "all") == 0)
+    char *req_content = calloc(req->content_len + 1, sizeof(char));
+    uint16_t ret = httpd_req_recv(req, req_content, req->content_len);
+    if (ret <= 0)
     {
-        cJSON *data_json = config_parse(utr32, CONFIG_ALL);
-        body_str = cJSON_Print(data_json);
-        cJSON_Delete(data_json);
-    }
-    else if (strcmp(config_type, "old") == 0)
-    {
-        body_str = fs_read_file("/data/old_config", NULL);
-    }
-    else if (strcmp(config_type, "factory") == 0)
-    {
-        body_str = fs_read_file("/data/default", NULL);
-    }
-    else
-    {
-        cJSON *data_json = config_parse(utr32, CONFIG_TO);
-        body_str = cJSON_Print(data_json);
-        cJSON_Delete(data_json);
+        ESP_LOGE(TAG, "Error receiving data");
+        free(req_content);
+        return ESP_FAIL;
     }
 
-    if (!is_root)
-    {
-        cJSON *body_json = cJSON_Parse(body_str);
-        free(body_str);
+    cJSON *config = cJSON_Parse(req_content);
 
-        cJSON_DeleteItemFromObject(body_json, "admin");
+    temp_sim.ac_heat = cJSON_GetObjectItem(config, "ac_heat")->valuedouble;
+    temp_sim.eq_heat = cJSON_GetObjectItem(config, "eq_heat")->valuedouble;
+    temp_sim.amb_temp = cJSON_GetObjectItem(config, "amb_temp")->valuedouble;
+    temp_sim.curr_temp = cJSON_GetObjectItem(config, "curr_temp")->valuedouble;
 
-        body_str = cJSON_Print(body_json);
-        cJSON_Delete(body_json);
-    }
-
-    httpd_resp_set_type(req, "application/json");
-
-    if (!body_str)
-    {
-        body_str = malloc(sizeof(char));
-    }
-    httpd_resp_send(req, body_str, HTTPD_RESP_USE_STRLEN);
-
-    free(body_str);
+    httpd_resp_set_status(req, HTTPD_200);
+    httpd_resp_send(req, NULL, 0);
 
     return ESP_OK;
 }
 
-void http_server_init(utr32_data_t *config)
+static esp_err_t graph_get_handler(httpd_req_t *req)
 {
-    utr32 = config;
+
+    uint8_t *bytes = ring_buffer_peek(temp_sim.buffer);
+
+    httpd_resp_send(req, (char *) bytes, temp_sim.buffer->count * temp_sim.buffer->item_size);
+    httpd_resp_set_status(req, HTTPD_200);
+    httpd_resp_send(req, NULL, 0);
+
+    return ESP_OK;
+}
+
+
+void http_server_init()
+{
 
     esp_err_t err = ESP_OK;
 
@@ -218,7 +174,7 @@ void http_server_init(utr32_data_t *config)
         for (uint8_t i = 0; i < HTTP_DATA_MAX_INDEX; i++)
         {
             httpd_uri_t content_uri = l_http_data[i];
-            SYSTEM_ERROR_CHECK(httpd_register_uri_handler(http_instance, &content_uri), err, TAG, "Erro ao registrar uri");
+            httpd_register_uri_handler(http_instance, &content_uri);
         }
 
         ESP_LOGI(TAG, "Server Started");
@@ -235,7 +191,7 @@ void http_server_stop(void)
 
     if (http_instance != NULL)
     {
-        SYSTEM_ERROR_CHECK(httpd_stop(http_instance), err, TAG, "Erro ao parar o servidor");
+        httpd_stop(http_instance);
         ESP_LOGI(TAG, "Server Stopped");
     }
 }

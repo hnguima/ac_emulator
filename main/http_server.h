@@ -18,18 +18,9 @@
 
 #include "cJSON.h"
 
-#include "telesignals.h"
-#include "telecommands.h"
-#include "telemeasurements.h"
-
-#include "system.h"
+#include "temp_sim.h"
+#include "ring_buffer.h"
 #include "filesystem.h"
-#include "system.h"
-#include "io_driver.h"
-#include "modbus_driver.h"
-#include "led_driver.h"
-#include "ac_controller.h"
-#include "config.h"
 
 #define SERVER_PORT 80
 
@@ -58,12 +49,8 @@ struct async_send_arg
     char *payload;
 };
 
-utr32_data_t *utr32;
 
-httpd_handle_t http_instance;
-int ws_fd;
-void http_server_init(utr32_data_t *config);
+void http_server_init();
 void http_server_stop(void);
-esp_err_t websocket_async_send(char *payload);
 
 #endif //<-- __HTTPSERVER___H -->

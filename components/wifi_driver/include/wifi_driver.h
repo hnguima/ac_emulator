@@ -29,16 +29,19 @@
  * Callbacks
  */
 //#include "esp_event_loop.h"
-#include "esp_event.h"
 
 /**
  * Drivers;
  */
-#include "driver/periph_ctrl.h"
 #include "esp_wifi.h"
 
 #include "lwip/err.h"
+#include "lwip/def.h"
 #include "lwip/sys.h"
+
+// NVS
+#include "nvs.h"
+#include "nvs_flash.h"
 
 typedef struct
 {

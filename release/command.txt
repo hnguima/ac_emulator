@@ -1,0 +1,1 @@
+esptool.py -p COM## -b 500000 --before default_reset --after hard_reset --chip esp32 write_flash --flash_mode dio --flash_freq 40m --flash_size detect 0 temp_sim_0.0.0.bin

@@ -26,44 +26,18 @@
 #include "esp_event.h"
 
 // Watchdog
-#include "soc/rtc_wdt.h"
 #include "esp_task_wdt.h"
 
 // Drivers
 #include "driver/gpio.h"
-#include "driver/periph_ctrl.h"
 #include "esp32/rom/gpio.h"
 
 // User Libs
+#include "temp_sim.h"
+#include "ring_buffer.h"
 #include "wifi_driver.h"
+#include "http_server.h"
 
-typedef struct
-{
-  int16_t head;
-  int16_t tail;
 
-  size_t item_size;
-  int16_t max_count;
-  int16_t count;
-
-  bool full;
-
-  void **data;
-} ring_buffer_t;
-
-typedef struct
-{
-
-  float curr_temp;
-  float ac_heat;
-  float eq_heat;
-  float amb_temp;
-
-  bool ac1_on;
-  bool ac2_on;
-
-  ring_buffer_t *buffer;
-
-} temp_simulator_t;
 
 #endif //<-- __MAIN__H -->
